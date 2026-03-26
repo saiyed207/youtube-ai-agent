@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from openai import OpenAI  # <-- Import the new library
+from openai import OpenAI
 
 # 1. Load your hidden secrets
 YT_API_KEY = os.environ['YT_API_KEY']
-HF_TOKEN = os.environ['HF_TOKEN'] # <-- Load the new Hugging Face token
+HF_TOKEN = os.environ['HF_TOKEN']
 EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 
@@ -38,7 +38,7 @@ for item in response.get("items", []):
     video_id = item["id"]["videoId"]
     video_text += f"Title: {title}\nLink: https://www.youtube.com/watch?v={video_id}\n\n"
 
-# 3. Send the videos to the Hugging Face AI Agent
+# 3. Sending data to AI Agent using EXACTLY your provided code
 print("Sending data to AI Agent...")
 
 client = OpenAI(
@@ -46,20 +46,19 @@ client = OpenAI(
     api_key=HF_TOKEN,
 )
 
-prompt = f"""
-You are an expert developer. I have found the most-viewed coding videos on YouTube from the last 24 hours. 
-Filter out any clickbait and write a friendly email summarizing the best ones I should watch today. Include the YouTube links.
-
-Here is the data:
-{video_text}
-"""
+prompt_message = f"You are an expert developer. Read these YouTube video titles. Filter out clickbait and write a friendly email summarizing the best ones I should watch today. Include the YouTube links:\n\n{video_text}"
 
 completion = client.chat.completions.create(
-    model="deepseek-ai/DeepSeek-C-V2", # Switched to newer Deepseek model for better results
-    messages=[{"role": "user", "content": prompt}],
+    model="deepseek-ai/DeepSeek-R1:novita",
+    messages=[
+        {
+            "role": "user",
+            "content": prompt_message
+        }
+    ],
 )
 
-# Extract the AI's response text correctly
+# Extracting the text from your exact completion format
 ai_response_text = completion.choices[0].message.content
 
 # 4. Email the final newsletter to yourself
@@ -67,7 +66,7 @@ print("Sending email...")
 msg = MIMEMultipart()
 msg['From'] = EMAIL_ADDRESS
 msg['To'] = EMAIL_ADDRESS
-msg['Subject'] = "🚀 Your Hugging Face AI Agent Report"
+msg['Subject'] = "🚀 Your DeepSeek AI Agent Report"
 
 msg.attach(MIMEText(ai_response_text, 'plain'))
 
