@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import google.generativeai as genai
+from openai import OpenAI  # <-- Import the new library
 
 # 1. Load your hidden secrets
 YT_API_KEY = os.environ['YT_API_KEY']
-GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
+HF_TOKEN = os.environ['HF_TOKEN'] # <-- Load the new Hugging Face token
 EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 
@@ -28,41 +28,48 @@ params = {
 print("Fetching videos from YouTube...")
 response = requests.get(url, params=params).json()
 
+if 'items' not in response or not response['items']:
+    print("No new videos found in the last 24 hours. Exiting.")
+    exit()
+
 video_text = ""
 for item in response.get("items", []):
     title = item["snippet"]["title"]
-    desc = item["snippet"]["description"]
     video_id = item["id"]["videoId"]
-    video_text += f"Title: {title}\nLink: https://www.youtube.com/watch?v={video_id}\nDescription: {desc}\n\n"
+    video_text += f"Title: {title}\nLink: https://www.youtube.com/watch?v={video_id}\n\n"
 
-# 3. Send the videos to the AI Agent to evaluate
+# 3. Send the videos to the Hugging Face AI Agent
 print("Sending data to AI Agent...")
-genai.configure(api_key=GEMINI_API_KEY)
 
-# Using the exact model you requested for speed and efficiency
-model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=HF_TOKEN,
+)
 
 prompt = f"""
-You are an expert developer and tech analyst. I have found the most-viewed coding and AI videos on YouTube from the last 24 hours. 
-Read their titles and descriptions below. Filter out any clickbait or low-quality content. 
-Write a friendly, highly readable email newsletter summarizing the 2-3 absolute best and most valuable videos I should watch today.
-For each video, explain WHY it is worth watching in a single sentence.
-Make sure to include the YouTube links for each video you recommend.
+You are an expert developer. I have found the most-viewed coding videos on YouTube from the last 24 hours. 
+Filter out any clickbait and write a friendly email summarizing the best ones I should watch today. Include the YouTube links.
 
 Here is the data:
 {video_text}
 """
 
-ai_response = model.generate_content(prompt).text
+completion = client.chat.completions.create(
+    model="deepseek-ai/DeepSeek-C-V2", # Switched to newer Deepseek model for better results
+    messages=[{"role": "user", "content": prompt}],
+)
+
+# Extract the AI's response text correctly
+ai_response_text = completion.choices[0].message.content
 
 # 4. Email the final newsletter to yourself
 print("Sending email...")
 msg = MIMEMultipart()
 msg['From'] = EMAIL_ADDRESS
-msg['To'] = EMAIL_ADDRESS 
-msg['Subject'] = "⚡️ Your AI Agent's Daily Flash Briefing"
+msg['To'] = EMAIL_ADDRESS
+msg['Subject'] = "🚀 Your Hugging Face AI Agent Report"
 
-msg.attach(MIMEText(ai_response, 'plain'))
+msg.attach(MIMEText(ai_response_text, 'plain'))
 
 # Connect to Gmail and send
 server = smtplib.SMTP('smtp.gmail.com', 587)
