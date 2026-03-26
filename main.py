@@ -17,7 +17,7 @@ yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat("T") + "Z"
 url = "https://youtube.googleapis.com/youtube/v3/search"
 params = {
     "part": "snippet",
-    "q": "coding | programming | web development | python",
+    "q": "coding | programming | web development | python | AI",
     "order": "viewCount",
     "publishedAfter": yesterday,
     "maxResults": 5,
@@ -38,13 +38,16 @@ for item in response.get("items", []):
 # 3. Send the videos to the AI Agent to evaluate
 print("Sending data to AI Agent...")
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro') # <-- THIS IS THE ONLY CHANGE
+
+# Using the exact model you requested for speed and efficiency
+model = genai.GenerativeModel('gemini-1.5-flash-latest') 
 
 prompt = f"""
-You are an expert developer. I have found the most-viewed coding videos on YouTube from the last 24 hours. 
-Read their titles and descriptions below. Filter out the clickbait. 
-Write a friendly, highly readable email newsletter summarizing the absolute best ones I should watch today.
-Include the YouTube links.
+You are an expert developer and tech analyst. I have found the most-viewed coding and AI videos on YouTube from the last 24 hours. 
+Read their titles and descriptions below. Filter out any clickbait or low-quality content. 
+Write a friendly, highly readable email newsletter summarizing the 2-3 absolute best and most valuable videos I should watch today.
+For each video, explain WHY it is worth watching in a single sentence.
+Make sure to include the YouTube links for each video you recommend.
 
 Here is the data:
 {video_text}
@@ -56,8 +59,8 @@ ai_response = model.generate_content(prompt).text
 print("Sending email...")
 msg = MIMEMultipart()
 msg['From'] = EMAIL_ADDRESS
-msg['To'] = EMAIL_ADDRESS # You are sending it to yourself
-msg['Subject'] = "🤖 Your Daily AI Agent: Top Coding Videos"
+msg['To'] = EMAIL_ADDRESS 
+msg['Subject'] = "⚡️ Your AI Agent's Daily Flash Briefing"
 
 msg.attach(MIMEText(ai_response, 'plain'))
 
