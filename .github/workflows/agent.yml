@@ -1,0 +1,29 @@
+name: Run Daily AI Agent
+
+on:
+  schedule:
+    - cron: '27 6 * * *' 
+  workflow_dispatch: 
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4   # <-- UPDATED
+
+      - name: Set up Python
+        uses: actions/setup-python@v5   # <-- UPDATED
+        with:
+          python-version: '3.10'
+
+      - name: Install Requirements
+        run: pip install -r requirements.txt
+
+      - name: Run AI Agent Code
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        run: python main.py
