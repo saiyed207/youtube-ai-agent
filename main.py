@@ -1,5 +1,6 @@
 import os
 import requests
+import re  # We need this to hide DeepSeek's <think> tags
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
@@ -36,9 +37,11 @@ video_text = ""
 for item in response.get("items", []):
     title = item["snippet"]["title"]
     video_id = item["id"]["videoId"]
-    video_text += f"Title: {title}\nLink: https://www.youtube.com/watch?v={video_id}\n\n"
+    # Grab the high-quality thumbnail image URL
+    thumbnail = item["snippet"]["thumbnails"]["high"]["url"]
+    video_text += f"Title: {title}\nLink: https://www.youtube.com/watch?v={video_id}\nThumbnail: {thumbnail}\n\n"
 
-# 3. Sending data to AI Agent using EXACTLY your provided code
+# 3. Sending data to AI Agent using your exact code
 print("Sending data to AI Agent...")
 
 client = OpenAI(
@@ -46,7 +49,20 @@ client = OpenAI(
     api_key=HF_TOKEN,
 )
 
-prompt_message = f"You are an expert developer. Read these YouTube video titles. Filter out clickbait and write a friendly email summarizing the best ones I should watch today. Include the YouTube links:\n\n{video_text}"
+# We ask the AI to specifically write HTML and CSS
+prompt_message = f"""You are an expert developer. Read these YouTube videos. 
+Filter out clickbait and write a beautifully formatted HTML email summarizing the best ones I should watch today. 
+
+STRICT RULES:
+1. Output ONLY valid HTML code. Do not use markdown like ```html.
+2. Use professional, clean inline CSS (e.g., font-family: Arial; background-color: #f4f4f9; padding: 20px; border-radius: 10px;).
+3. For EACH video, you MUST display its Thumbnail image using an HTML <img> tag (style="width: 100%; max-width: 320px; border-radius: 8px;").
+4. Make the video Title a bold, clickable hyperlink.
+5. Add a 1-sentence summary below each video.
+
+Here is the video data:
+{video_text}
+"""
 
 completion = client.chat.completions.create(
     model="deepseek-ai/DeepSeek-R1:novita",
@@ -58,8 +74,14 @@ completion = client.chat.completions.create(
     ],
 )
 
-# Extracting the text from your exact completion format
+# Extract the AI's response text
 ai_response_text = completion.choices[0].message.content
+
+# Remove DeepSeek-R1's <think> tags so they don't show up in your email
+html_content = re.sub(r'<think>.*?</think>', '', ai_response_text, flags=re.DOTALL).strip()
+
+# Remove markdown code blocks if the AI accidentally wraps the HTML
+html_content = html_content.replace('```html', '').replace('```', '').strip()
 
 # 4. Email the final newsletter to yourself
 print("Sending email...")
@@ -68,7 +90,8 @@ msg['From'] = EMAIL_ADDRESS
 msg['To'] = EMAIL_ADDRESS
 msg['Subject'] = "🚀 Your DeepSeek AI Agent Report"
 
-msg.attach(MIMEText(ai_response_text, 'plain'))
+# THIS IS THE MAGIC: Change 'plain' to 'html' so Gmail renders the CSS and Images
+msg.attach(MIMEText(html_content, 'html'))
 
 # Connect to Gmail and send
 server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -77,4 +100,4 @@ server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
 server.send_message(msg)
 server.quit()
 
-print("Success! Email delivered.")
+print("Success! HTML Email delivered.")
