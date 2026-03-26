@@ -2,8 +2,8 @@ name: Run Daily AI Agent
 
 on:
   schedule:
-    - cron: '27 6 * * *' 
-  workflow_dispatch: 
+    - cron: '27 6 * * *' # Runs at 6:27 AM UTC (12:12 PM Nepal Time)
+  workflow_dispatch: # This adds the button so you can test it manually
 
 jobs:
   run-agent:
@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11' # Upgraded to 3.11 for better performance and support
 
       - name: Install Requirements
         run: pip install -r requirements.txt
@@ -23,7 +23,7 @@ jobs:
       - name: Run AI Agent Code
         env:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}         # <-- THIS IS THE FIX
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}         # <-- This is the crucial line for Hugging Face
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: python main.py
